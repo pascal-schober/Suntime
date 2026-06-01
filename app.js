@@ -137,8 +137,7 @@ function handleOrientation(evt) {
 
   // Convert to compass heading: when the phone is held in portrait, pointing up
   // alpha counts counter-clockwise from north, so heading = (360 - alpha) % 360
-  // (or just use alpha for absolute events which already give compass bearing)
-  state.rawHeading = evt.absolute ? wrap360(360 - alpha) : wrap360(360 - alpha);
+  state.rawHeading = wrap360(360 - alpha);
   state.rawPitch   = beta;
   state.rawRoll    = gamma;
   state.orientationAvailable = true;
@@ -159,6 +158,11 @@ function registerOrientationListener() {
    Phase 4 — AR Projection Math
 ──────────────────────────────────────────────── */
 
+/** Compute the camera's vertical field of view from the horizontal FOV and canvas aspect ratio. */
+function verticalFOV() {
+  return state.fovDeg * (canvas.height / canvas.width);
+}
+
 /**
  * Project an astronomical (azimuth, altitude) pair to canvas (x, y) pixels.
  *
@@ -170,8 +174,8 @@ function project(azDeg, altDeg) {
   const w = canvas.width;
   const h = canvas.height;
 
-  const fovH = state.fovDeg;                         // horizontal FOV (degrees)
-  const fovV = fovH * (h / w);                       // vertical FOV (approximate)
+  const fovH = state.fovDeg;   // horizontal FOV (degrees)
+  const fovV = verticalFOV();  // vertical FOV (approximate)
 
   // Angular difference between sun and phone heading
   let dAz = azDeg - state.headingDeg;
@@ -375,7 +379,8 @@ function renderFrame() {
 
     // Horizon line hint when device orientation is available
     if (state.orientationAvailable) {
-      const horizonY = canvas.height / 2 + ((state.pitchDeg - 90) / state.fovDeg) * canvas.height;
+      const fovV = verticalFOV();
+      const horizonY = canvas.height / 2 + ((state.pitchDeg - 90) / fovV) * canvas.height;
       ctx.beginPath();
       ctx.moveTo(0, horizonY);
       ctx.lineTo(canvas.width, horizonY);
