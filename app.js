@@ -65,6 +65,9 @@ const state = {
   // Flags
   orientationAvailable: false,
   animFrameId: null,
+  orientationEventType: null,
+  // Sun-path sample cache (invalidated when day or location changes)
+  sunPathCache: null,   // { key: string, samples: Array<{azDeg, altDeg}> }
 };
 
 /* ────────────────────────────────────────────────
@@ -131,13 +134,17 @@ function updateSunPosition() {
 function handleOrientation(evt) {
   // `absolute` events have a true north reference.
   // alpha = compass heading [0, 360), but 0 = North on absolute events
-  const alpha = evt.alpha ?? 0;
   const beta  = evt.beta  ?? 0;   // tilt front/back, [-180, 180]
   const gamma = evt.gamma ?? 0;   // tilt left/right, [-90, 90]
 
-  // Convert to compass heading: when the phone is held in portrait, pointing up
-  // alpha counts counter-clockwise from north, so heading = (360 - alpha) % 360
-  state.rawHeading = wrap360(360 - alpha);
+  // iOS Safari provides webkitCompassHeading (degrees CW from true north).
+  // On Android/absolute events, alpha counts CCW from north, so heading = (360 - alpha) % 360.
+  if (evt.webkitCompassHeading !== null && evt.webkitCompassHeading !== undefined) {
+    state.rawHeading = wrap360(evt.webkitCompassHeading);
+  } else {
+    const alpha = evt.alpha ?? 0;
+    state.rawHeading = wrap360(360 - alpha);
+  }
   state.rawPitch   = beta;
   state.rawRoll    = gamma;
   state.orientationAvailable = true;
@@ -148,9 +155,17 @@ function handleOrientation(evt) {
 function registerOrientationListener() {
   // Prefer absolute orientation (gives true-north heading on Android)
   if ('ondeviceorientationabsolute' in window) {
-    window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+    state.orientationEventType = 'deviceorientationabsolute';
   } else {
-    window.addEventListener('deviceorientation', handleOrientation, true);
+    state.orientationEventType = 'deviceorientation';
+  }
+  window.addEventListener(state.orientationEventType, handleOrientation, true);
+}
+
+function unregisterOrientationListener() {
+  if (state.orientationEventType) {
+    window.removeEventListener(state.orientationEventType, handleOrientation, true);
+    state.orientationEventType = null;
   }
 }
 
@@ -160,7 +175,7 @@ function registerOrientationListener() {
 
 /** Compute the camera's vertical field of view from the horizontal FOV and canvas aspect ratio. */
 function verticalFOV() {
-  return state.fovDeg * (canvas.height / canvas.width);
+  return (Math.atan(Math.tan(toRad(state.fovDeg) / 2) * (canvas.height / canvas.width)) * 2) * 180 / Math.PI;
 }
 
 /**
@@ -280,6 +295,8 @@ function drawArrow(pos) {
 /**
  * Draw the sun's path arc for the target day.
  * Plots SunCalc positions every (24/SUN_PATH_STEPS) hours.
+ * Sun-path samples (az/alt) are cached and only recomputed when the
+ * target day or location changes; per-frame work is projection + drawing only.
  */
 function drawSunPath() {
   const w = canvas.width;
@@ -289,15 +306,23 @@ function drawSunPath() {
   const ref = targetDate();
   const midnight = new Date(ref.getFullYear(), ref.getMonth(), ref.getDate(), 0, 0, 0);
 
-  const points = [];
-  for (let i = 0; i <= SUN_PATH_STEPS; i++) {
-    const t = new Date(midnight.getTime() + (i / SUN_PATH_STEPS) * 24 * 3600 * 1000);
-    const pos = SunCalc.getPosition(t, state.lat, state.lon);
-    const azDeg  = wrap360((pos.azimuth * 180 / Math.PI) + 180);
-    const altDeg = pos.altitude * 180 / Math.PI;
-    const p = project(azDeg, altDeg);
-    points.push({ ...p, altDeg, t });
+  // Cache key: day + location (rounded to ~11 m to avoid float noise)
+  const cacheKey = `${midnight.getTime()},${state.lat?.toFixed(4)},${state.lon?.toFixed(4)}`;
+  if (!state.sunPathCache || state.sunPathCache.key !== cacheKey) {
+    const samples = [];
+    for (let i = 0; i <= SUN_PATH_STEPS; i++) {
+      const t = new Date(midnight.getTime() + (i / SUN_PATH_STEPS) * 24 * 3600 * 1000);
+      const pos = SunCalc.getPosition(t, state.lat, state.lon);
+      samples.push({
+        azDeg:  wrap360((pos.azimuth * 180 / Math.PI) + 180),
+        altDeg: pos.altitude * 180 / Math.PI,
+      });
+    }
+    state.sunPathCache = { key: cacheKey, samples };
   }
+
+  const { samples } = state.sunPathCache;
+  const points = samples.map(s => ({ ...project(s.azDeg, s.altDeg), altDeg: s.altDeg }));
 
   if (points.length < 2) return;
 
@@ -473,6 +498,7 @@ async function startAR() {
 
     await Promise.all([requestLocation(), startCamera()]);
   } catch (err) {
+    stopCamera(); // ensure camera stream is released if location (or camera) failed
     showError(err.message + '\n\nTip: make sure you\'re on HTTPS and have allowed Camera and Location permissions.');
     startBtn.disabled = false;
     startBtn.textContent = 'Start AR';
@@ -498,7 +524,14 @@ function stopAR() {
   state.running = false;
   if (state.animFrameId) cancelAnimationFrame(state.animFrameId);
   stopCamera();
+  unregisterOrientationListener();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Reset orientation state
+  state.orientationAvailable = false;
+  state.rawHeading = null;
+  state.rawPitch = 0;
+  state.rawRoll  = 0;
 
   hud.classList.add('hidden');
   startScreen.classList.remove('hidden');

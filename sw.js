@@ -11,12 +11,14 @@ const CACHE_NAME = 'opensun-ar-v1';
 
 // App-shell assets to cache on install
 const PRECACHE_URLS = [
-  '/',
-  '/index.html',
-  '/style.css',
-  '/app.js',
-  '/suncalc.js',
-  '/manifest.json',
+  './',
+  './index.html',
+  './style.css',
+  './app.js',
+  './suncalc.js',
+  './manifest.json',
+  './icons/icon-192.png',
+  './icons/icon-512.png',
 ];
 
 /* ────────────────────────────────────────────────
@@ -38,7 +40,7 @@ self.addEventListener('activate', event => {
     caches.keys().then(keys =>
       Promise.all(
         keys
-          .filter(k => k !== CACHE_NAME)
+          .filter(k => k !== CACHE_NAME && k.startsWith('opensun-ar-'))
           .map(k => caches.delete(k))
       )
     )
@@ -74,7 +76,7 @@ async function cacheFirstWithNetwork(request) {
   } catch {
     // If offline and not in cache, return the app shell for navigation requests
     if (request.mode === 'navigate') {
-      const fallback = await caches.match('/index.html');
+      const fallback = await caches.match('./index.html');
       if (fallback) return fallback;
     }
     return new Response('Offline', { status: 503, statusText: 'Service Unavailable' });
