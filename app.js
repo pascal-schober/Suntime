@@ -431,20 +431,22 @@ async function startCamera() {
     // Set video source and attempt to play
     video.srcObject = stream;
     await video.play().catch(e => {
-      // Autoplay may be blocked by browser policy, but stream is still valid
-      console.log('Video autoplay blocked, user interaction may be needed:', e);
+      // Autoplay may be blocked by browser policy - camera stream is active but video display requires user interaction
+      console.log('Camera stream active. Video display may require user interaction due to browser autoplay policy:', e);
     });
     
     return stream;
   } catch (err) {
     // Provide more specific error messages based on error type
-    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+    const errorName = err.name;
+    
+    if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError') {
       throw new Error('Camera permission denied. Please allow camera access and try again.');
-    } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+    } else if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
       throw new Error('No camera found on this device.');
-    } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+    } else if (errorName === 'NotReadableError' || errorName === 'TrackStartError') {
       throw new Error('Camera is already in use by another application. Please close other apps using the camera and try again.');
-    } else if (err.name === 'OverconstrainedError' || err.name === 'ConstraintNotSatisfiedError') {
+    } else if (errorName === 'OverconstrainedError' || errorName === 'ConstraintNotSatisfiedError') {
       throw new Error('Camera does not meet the required specifications.');
     } else if (err.message) {
       throw new Error(`Camera access error: ${err.message}`);
