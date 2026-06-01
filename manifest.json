@@ -23,9 +23,5 @@
     }
   ],
   "categories": ["utilities", "lifestyle"],
-  "screenshots": [],
-  "permissions": [
-    "camera",
-    "geolocation"
-  ]
+  "screenshots": []
 }

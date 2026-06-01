@@ -428,9 +428,12 @@ async function startCamera() {
       audio: false,
     });
     
-    // Ensure video element is ready to play
+    // Set video source and attempt to play
     video.srcObject = stream;
-    await video.play().catch(e => console.log('Video play error (can be ignored):', e));
+    await video.play().catch(e => {
+      // Autoplay may be blocked by browser policy, but stream is still valid
+      console.log('Video autoplay blocked, user interaction may be needed:', e);
+    });
     
     return stream;
   } catch (err) {
@@ -442,7 +445,7 @@ async function startCamera() {
     } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
       throw new Error('Camera is already in use by another application. Please close other apps using the camera and try again.');
     } else if (err.name === 'OverconstrainedError' || err.name === 'ConstraintNotSatisfiedError') {
-      throw new Error('Camera does not meet the required specifications. Trying with relaxed constraints...');
+      throw new Error('Camera does not meet the required specifications.');
     } else if (err.message) {
       throw new Error(`Camera access error: ${err.message}`);
     } else {
