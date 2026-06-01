@@ -2,8 +2,8 @@
   "name": "OpenSun AR",
   "short_name": "OpenSun",
   "description": "Privacy-respecting AR sun tracker PWA. See the sun's position and daily path through your camera.",
-  "start_url": "/",
-  "scope": "/",
+  "start_url": "./",
+  "scope": "./",
   "display": "fullscreen",
   "orientation": "portrait",
   "background_color": "#0a0a1a",
@@ -23,5 +23,9 @@
     }
   ],
   "categories": ["utilities", "lifestyle"],
-  "screenshots": []
+  "screenshots": [],
+  "permissions": [
+    "camera",
+    "geolocation"
+  ]
 }

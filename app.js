@@ -401,6 +401,24 @@ function renderFrame() {
 
 async function startCamera() {
   try {
+    // Check if mediaDevices API is available
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('Camera API not available in this browser');
+    }
+
+    // Check camera permission state if supported
+    if (navigator.permissions && navigator.permissions.query) {
+      try {
+        const permissionStatus = await navigator.permissions.query({ name: 'camera' });
+        if (permissionStatus.state === 'denied') {
+          throw new Error('Camera permission denied. Please enable camera access in your browser settings and reload the page.');
+        }
+      } catch (permErr) {
+        // Permission query not supported on all browsers, continue with getUserMedia
+        console.log('Permission query not supported:', permErr);
+      }
+    }
+
     const stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: { ideal: 'environment' },
@@ -409,10 +427,27 @@ async function startCamera() {
       },
       audio: false,
     });
+    
+    // Ensure video element is ready to play
     video.srcObject = stream;
+    await video.play().catch(e => console.log('Video play error (can be ignored):', e));
+    
     return stream;
   } catch (err) {
-    throw new Error(`Camera access denied or unavailable: ${err.message}`);
+    // Provide more specific error messages based on error type
+    if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+      throw new Error('Camera permission denied. Please allow camera access and try again.');
+    } else if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
+      throw new Error('No camera found on this device.');
+    } else if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
+      throw new Error('Camera is already in use by another application. Please close other apps using the camera and try again.');
+    } else if (err.name === 'OverconstrainedError' || err.name === 'ConstraintNotSatisfiedError') {
+      throw new Error('Camera does not meet the required specifications. Trying with relaxed constraints...');
+    } else if (err.message) {
+      throw new Error(`Camera access error: ${err.message}`);
+    } else {
+      throw new Error('Camera access denied or unavailable');
+    }
   }
 }
 
