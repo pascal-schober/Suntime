@@ -32,7 +32,7 @@ Hosted on GitHub Pages → **[https://pascal-schober.github.io/Suntime/](https:/
 
 ```
 Suntime/
-├── index.html      ← App shell + SunCalc CDN import
+├── index.html      ← App shell + local SunCalc script import
 ├── style.css       ← Mobile-first full-screen layout
 ├── app.js          ← All logic: location, sun math, camera, AR projection
 ├── sw.js           ← Service Worker for offline caching
