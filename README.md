@@ -58,6 +58,8 @@ Suntime/
 | Desktop Chrome ✅ | ✅ | ✅ | ❌ no compass (shows sun math only) |
 
 > **Requires HTTPS.** GitHub Pages provides this automatically.
+>
+> If camera access is unavailable, you can still launch the app in fallback mode without the live camera feed.
 
 ## Deployment
 

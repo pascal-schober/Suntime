@@ -20,6 +20,12 @@ html, body {
   position: fixed;
 }
 
+body.no-camera {
+  background:
+    radial-gradient(circle at top, rgba(255, 187, 0, 0.22), transparent 30%),
+    linear-gradient(180deg, #14213d 0%, #0b1024 55%, #05070f 100%);
+}
+
 /* ---- Camera video (full-screen background) ---- */
 #video {
   position: fixed;
@@ -29,6 +35,10 @@ html, body {
   object-fit: cover;
   z-index: 1;
   background: #000;
+}
+
+body.no-camera #video {
+  display: none;
 }
 
 /* ---- AR canvas overlay ---- */
@@ -127,6 +137,30 @@ html, body {
   transform: scale(0.98);
 }
 
+.start-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.secondary-btn {
+  width: 100%;
+  padding: 0.85rem;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.92);
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, transform 0.1s;
+}
+
+.secondary-btn:active {
+  background: rgba(255,255,255,0.14);
+  transform: scale(0.98);
+}
+
 /* ---- HUD (top info bar + bottom controls) ---- */
 #hud {
   position: fixed;
@@ -143,6 +177,8 @@ html, body {
   pointer-events: none;
   display: flex;
   justify-content: space-between;
+  align-items: center;
+  gap: 0.75rem;
   padding: 0.6rem 1rem;
   padding-top: max(0.6rem, env(safe-area-inset-top));
   background: linear-gradient(to bottom, rgba(0,0,0,0.55), transparent);
@@ -150,6 +186,15 @@ html, body {
   font-variant-numeric: tabular-nums;
   color: rgba(255,255,255,0.85);
   letter-spacing: 0.02em;
+}
+
+#mode-info {
+  padding: 0.2rem 0.55rem;
+  border: 1px solid rgba(255,255,255,0.18);
+  border-radius: 999px;
+  background: rgba(255,255,255,0.1);
+  color: rgba(255,255,255,0.9);
+  white-space: nowrap;
 }
 
 /* Bottom controls panel */

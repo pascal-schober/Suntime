@@ -27,6 +27,7 @@ const ctx          = canvas.getContext('2d');
 const startScreen  = document.getElementById('start-screen');
 const hud          = document.getElementById('hud');
 const startBtn     = document.getElementById('start-btn');
+const fallbackBtn  = document.getElementById('fallback-btn');
 const stopBtn      = document.getElementById('stop-btn');
 const resetBtn     = document.getElementById('reset-btn');
 const hourSlider   = document.getElementById('hour-slider');
@@ -36,6 +37,7 @@ const dayValue     = document.getElementById('day-value');
 const fovSlider    = document.getElementById('fov-slider');
 const fovValue     = document.getElementById('fov-value');
 const sunInfo      = document.getElementById('sun-info');
+const modeInfo     = document.getElementById('mode-info');
 const compassInfo  = document.getElementById('compass-info');
 const errorMsg     = document.getElementById('error-msg');
 
@@ -65,6 +67,7 @@ const state = {
   // Flags
   orientationAvailable: false,
   animFrameId: null,
+  usingCamera: false,
 };
 
 /* ────────────────────────────────────────────────
@@ -406,16 +409,22 @@ async function startCamera() {
       throw new Error('Camera API not available in this browser');
     }
 
+    if (!window.isSecureContext) {
+      throw new Error('Camera access requires HTTPS or localhost.');
+    }
+
     // Check camera permission state if supported
     if (navigator.permissions && navigator.permissions.query) {
+      let permissionStatus = null;
       try {
-        const permissionStatus = await navigator.permissions.query({ name: 'camera' });
-        if (permissionStatus.state === 'denied') {
-          throw new Error('Camera permission denied. Please enable camera access in your browser settings and reload the page.');
-        }
+        permissionStatus = await navigator.permissions.query({ name: 'camera' });
       } catch (permErr) {
         // Permission query not supported on all browsers, continue with getUserMedia
         console.log('Permission query not supported:', permErr);
+      }
+
+      if (permissionStatus && permissionStatus.state === 'denied') {
+        throw new DOMException('Camera permission denied. Please allow camera access and try again.', 'NotAllowedError');
       }
     }
 
@@ -490,16 +499,30 @@ function requestLocation() {
    Phase 1 — Start / Stop Flow
 ──────────────────────────────────────────────── */
 
+function hideError() {
+  errorMsg.classList.add('hidden');
+  errorMsg.textContent = '';
+}
+
 function showError(msg) {
   errorMsg.textContent = msg;
   errorMsg.classList.remove('hidden');
   // Tap anywhere to dismiss
-  errorMsg.addEventListener('click', () => errorMsg.classList.add('hidden'), { once: true });
+  errorMsg.addEventListener('click', hideError, { once: true });
 }
 
-async function startAR() {
+function setCameraMode(useCamera) {
+  state.usingCamera = useCamera;
+  if (!useCamera) stopCamera();
+  document.body.classList.toggle('no-camera', !useCamera);
+  modeInfo.classList.toggle('hidden', useCamera);
+}
+
+async function startAR({ useCamera = true } = {}) {
+  hideError();
   startBtn.disabled = true;
-  startBtn.textContent = 'Starting…';
+  fallbackBtn.disabled = true;
+  startBtn.textContent = useCamera ? 'Starting…' : 'Starting fallback…';
 
   try {
     // iOS 13+ requires an explicit permission request for DeviceMotion/Orientation
@@ -511,10 +534,23 @@ async function startAR() {
       }
     }
 
-    await Promise.all([requestLocation(), startCamera()]);
+    await requestLocation();
+
+    if (useCamera) {
+      try {
+        await startCamera();
+        setCameraMode(true);
+      } catch (err) {
+        setCameraMode(false);
+        showError(err.message + '\n\nContinuing without the live camera feed.');
+      }
+    } else {
+      setCameraMode(false);
+    }
   } catch (err) {
     showError(err.message + '\n\nTip: make sure you\'re on HTTPS and have allowed Camera and Location permissions.');
     startBtn.disabled = false;
+    fallbackBtn.disabled = false;
     startBtn.textContent = 'Start AR';
     return;
   }
@@ -538,6 +574,8 @@ function stopAR() {
   state.running = false;
   if (state.animFrameId) cancelAnimationFrame(state.animFrameId);
   stopCamera();
+  setCameraMode(true);
+  hideError();
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   hud.classList.add('hidden');
@@ -552,6 +590,7 @@ function stopAR() {
   dayValue.textContent  = '0';
 
   startBtn.disabled = false;
+  fallbackBtn.disabled = false;
   startBtn.textContent = 'Start AR';
 }
 
@@ -559,7 +598,8 @@ function stopAR() {
    UI Event Listeners
 ──────────────────────────────────────────────── */
 
-startBtn.addEventListener('click', startAR);
+startBtn.addEventListener('click', () => startAR({ useCamera: true }));
+fallbackBtn.addEventListener('click', () => startAR({ useCamera: false }));
 stopBtn.addEventListener('click', stopAR);
 
 resetBtn.addEventListener('click', () => {

@@ -32,7 +32,10 @@
         <li>🧭 Uses your compass &amp; gyroscope for AR alignment</li>
         <li>🔒 100% private – no data ever leaves your device</li>
       </ul>
-      <button id="start-btn">Start AR</button>
+      <div class="start-actions">
+        <button id="start-btn">Start AR</button>
+        <button id="fallback-btn" class="secondary-btn">Use without camera</button>
+      </div>
     </div>
   </div>
 
@@ -42,6 +45,7 @@
     <!-- Top info bar -->
     <div id="info-bar">
       <span id="sun-info">Azimuth: –° &nbsp; Altitude: –°</span>
+      <span id="mode-info" class="hidden">Fallback mode</span>
       <span id="compass-info">Heading: –°</span>
     </div>
 
