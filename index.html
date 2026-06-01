@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a0a1a" />
+  <meta name="description" content="OpenSun AR – see the sun's position and path through your camera. Open-source, privacy-respecting PWA." />
+
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+
+  <title>OpenSun AR</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- Live camera feed (background) -->
+  <video id="video" autoplay playsinline muted></video>
+
+  <!-- AR canvas overlay (drawn on top of video) -->
+  <canvas id="canvas"></canvas>
+
+  <!-- Start screen -->
+  <div id="start-screen">
+    <div class="start-card">
+      <div class="sun-icon">☀</div>
+      <h1>OpenSun AR</h1>
+      <p>Point your camera at the sky to see the sun's position and daily path overlaid in real time.</p>
+      <ul class="feature-list">
+        <li>📍 Uses your GPS location for accurate sun math</li>
+        <li>🧭 Uses your compass &amp; gyroscope for AR alignment</li>
+        <li>🔒 100% private – no data ever leaves your device</li>
+      </ul>
+      <button id="start-btn">Start AR</button>
+    </div>
+  </div>
+
+  <!-- Main HUD (hidden until started) -->
+  <div id="hud" class="hidden">
+
+    <!-- Top info bar -->
+    <div id="info-bar">
+      <span id="sun-info">Azimuth: –° &nbsp; Altitude: –°</span>
+      <span id="compass-info">Heading: –°</span>
+    </div>
+
+    <!-- Bottom controls panel -->
+    <div id="controls-panel">
+
+      <div class="slider-row">
+        <label for="hour-slider">
+          <span class="label-icon">⏱</span>
+          <span class="label-text">+<span id="hour-value">0</span>h</span>
+        </label>
+        <input type="range" id="hour-slider" min="0" max="47" step="1" value="0" />
+      </div>
+
+      <div class="slider-row">
+        <label for="day-slider">
+          <span class="label-icon">📅</span>
+          <span class="label-text">+<span id="day-value">0</span>d</span>
+        </label>
+        <input type="range" id="day-slider" min="0" max="365" step="1" value="0" />
+      </div>
+
+      <div class="controls-footer">
+        <button id="reset-btn" title="Reset time to now">Reset</button>
+        <div id="fov-row">
+          <label for="fov-slider" title="Camera Field of View calibration">FOV <span id="fov-value">65</span>°</label>
+          <input type="range" id="fov-slider" min="30" max="120" step="1" value="65" />
+        </div>
+        <button id="stop-btn" title="Stop AR">✕</button>
+      </div>
+
+    </div><!-- /#controls-panel -->
+
+  </div><!-- /#hud -->
+
+  <!-- Permission / error message -->
+  <div id="error-msg" class="hidden"></div>
+
+  <!-- SunCalc (local copy – no CDN dependency) -->
+  <script src="suncalc.js"></script>
+  <script src="app.js"></script>
+
+</body>
+</html>
