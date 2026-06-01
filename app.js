@@ -401,6 +401,24 @@ function renderFrame() {
 
 async function startCamera() {
   try {
+    // Check if mediaDevices API is available
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      throw new Error('Camera API not available in this browser');
+    }
+
+    // Check camera permission state if supported
+    if (navigator.permissions && navigator.permissions.query) {
+      try {
+        const permissionStatus = await navigator.permissions.query({ name: 'camera' });
+        if (permissionStatus.state === 'denied') {
+          throw new Error('Camera permission denied. Please enable camera access in your browser settings and reload the page.');
+        }
+      } catch (permErr) {
+        // Permission query not supported on all browsers, continue with getUserMedia
+        console.log('Permission query not supported:', permErr);
+      }
+    }
+
     const stream = await navigator.mediaDevices.getUserMedia({
       video: {
         facingMode: { ideal: 'environment' },
@@ -409,10 +427,32 @@ async function startCamera() {
       },
       audio: false,
     });
+    
+    // Set video source and attempt to play
     video.srcObject = stream;
+    await video.play().catch(e => {
+      // Autoplay may be blocked by browser policy - camera stream is active but video display requires user interaction
+      console.log('Camera stream active. Video display may require user interaction due to browser autoplay policy:', e);
+    });
+    
     return stream;
   } catch (err) {
-    throw new Error(`Camera access denied or unavailable: ${err.message}`);
+    // Provide more specific error messages based on error type
+    const errorName = err.name;
+    
+    if (errorName === 'NotAllowedError' || errorName === 'PermissionDeniedError') {
+      throw new Error('Camera permission denied. Please allow camera access and try again.');
+    } else if (errorName === 'NotFoundError' || errorName === 'DevicesNotFoundError') {
+      throw new Error('No camera found on this device.');
+    } else if (errorName === 'NotReadableError' || errorName === 'TrackStartError') {
+      throw new Error('Camera is already in use by another application. Please close other apps using the camera and try again.');
+    } else if (errorName === 'OverconstrainedError' || errorName === 'ConstraintNotSatisfiedError') {
+      throw new Error('Camera does not meet the required specifications.');
+    } else if (err.message) {
+      throw new Error(`Camera access error: ${err.message}`);
+    } else {
+      throw new Error('Camera access denied or unavailable');
+    }
   }
 }
 
